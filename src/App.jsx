@@ -1,32 +1,46 @@
 
-import { useState } from 'react';
-import './App.css';
+import React, { useState } from "react";
+import "./App.css";
 
 const initialProducts = [
   {
     id: 1,
-    name: 'Premium Laptop',
+    name: "Premium Laptop",
     price: 40000,
-    image: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=600',
-    category: 'Electronics'
+    image: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=600",
+    category: "Electronics",
+    seller: "AuctionHub Store",
+    description: "Laptop listing submitted for admin review.",
+    condition: "Used",
+    proofUrl: "",
+    verificationStatus: "pending",
   },
   {
     id: 2,
-    name: 'Smartphone',
+    name: "Smartphone",
     price: 20000,
-    image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600',
-    category: 'Electronics'
+    image: "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=600",
+    category: "Electronics",
+    seller: "AuctionHub Store",
+    description: "Smartphone listing submitted for admin review.",
+    condition: "Used",
+    proofUrl: "",
+    verificationStatus: "pending",
   },
   {
     id: 3,
-    name: 'Smart Watch',
+    name: "Smart Watch",
     price: 5000,
-    image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600',
-    category: 'Accessories'
-  }
+    image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600",
+    category: "Accessories",
+    seller: "AuctionHub Store",
+    description: "Smart watch listing submitted for admin review.",
+    condition: "Used",
+    proofUrl: "",
+    verificationStatus: "pending",
+  },
 ];
 
-// Safely read data from Local Storage
 function readStorage(key, fallback) {
   try {
     const savedData = localStorage.getItem(key);
@@ -37,335 +51,485 @@ function readStorage(key, fallback) {
 }
 
 function App() {
-  const [page, setPage] = useState('home');
-  const [adminEmail, setAdminEmail] = useState('');
-const [adminPassword, setAdminPassword] = useState('');
-  const [newProductName, setNewProductName] = useState('');
-  const [newProductPrice, setNewProductPrice] = useState('');
+  const [page, setPage] = useState("home");
 
   const [users, setUsers] = useState(() =>
-    readStorage('auctionUsers', [])
+    readStorage("auctionUsers", [])
   );
 
+  const [products, setProducts] = useState(() => {
+    const savedProducts = readStorage("auctionProducts", null);
+    const source = Array.isArray(savedProducts)
+      ? savedProducts
+      : initialProducts;
+
+    const migratedProducts = source.map((product) => ({
+      ...product,
+      seller: product.seller || "AuctionHub Store",
+      description: product.description || "No description provided.",
+      condition: product.condition || "Used",
+      proofUrl: product.proofUrl || "",
+      verificationStatus: product.verificationStatus || "pending",
+    }));
+
+    localStorage.setItem(
+      "auctionProducts",
+      JSON.stringify(migratedProducts)
+    );
+
+    return migratedProducts;
+  });
+
   const [bids, setBids] = useState(() =>
-  readStorage('auctionBids', [])
-);
+    readStorage("auctionBids", [])
+  );
 
-const [notifications, setNotifications] = useState(() =>
-  readStorage('auctionNotifications', [])
-);
+  const [notifications, setNotifications] = useState(() =>
+    readStorage("auctionNotifications", [])
+  );
 
-  const [products, setProducts] = useState(() =>
-    readStorage('auctionProducts', initialProducts)
+  const [reports, setReports] = useState(() =>
+    readStorage("auctionReports", [])
+  );
+
+  const [loggedInUser, setLoggedInUser] = useState(
+    () => localStorage.getItem("loggedInUser") || ""
   );
 
   const [form, setForm] = useState({
-    name: '',
-    email: '',
-    password: ''
+    name: "",
+    email: "",
+    password: "",
   });
 
+  const [adminEmail, setAdminEmail] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+
+  const [newProductName, setNewProductName] = useState("");
+  const [newProductPrice, setNewProductPrice] = useState("");
+  const [newSellerName, setNewSellerName] = useState("");
+  const [newProductDescription, setNewProductDescription] = useState("");
+  const [newProductCondition, setNewProductCondition] = useState("New");
+  const [newProductImage, setNewProductImage] = useState("");
+  const [newProductProof, setNewProductProof] = useState("");
+
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [bidAmount, setBidAmount] = useState('');
-  const [message, setMessage] = useState('');
+  const [bidAmount, setBidAmount] = useState("");
 
-  const loggedInUser = localStorage.getItem('loggedInUser') || '';
+  const [reportProduct, setReportProduct] = useState(null);
+  const [reportReason, setReportReason] = useState("");
+  const [reportDetails, setReportDetails] = useState("");
 
-  function openPage(nextPage) {
-    setPage(nextPage);
-    setMessage('');
-    setSelectedProduct(null);
+  const [message, setMessage] = useState("");
+
+  const approvedProducts = products.filter(
+    (product) => product.verificationStatus === "approved"
+  );
+
+  const userBids = bids.filter(
+    (bid) => bid.bidder === loggedInUser
+  );
+
+  function saveProducts(updatedProducts) {
+    setProducts(updatedProducts);
+    localStorage.setItem(
+      "auctionProducts",
+      JSON.stringify(updatedProducts)
+    );
   }
 
-  function handleChange(e) {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value
-    });
+  function saveBids(updatedBids) {
+    setBids(updatedBids);
+    localStorage.setItem("auctionBids", JSON.stringify(updatedBids));
   }
 
-  // USER SIGNUP
+  function saveNotifications(updatedNotifications) {
+    setNotifications(updatedNotifications);
+    localStorage.setItem(
+      "auctionNotifications",
+      JSON.stringify(updatedNotifications)
+    );
+  }
+
+  function saveReports(updatedReports) {
+    setReports(updatedReports);
+    localStorage.setItem(
+      "auctionReports",
+      JSON.stringify(updatedReports)
+    );
+  }
+
   function handleSignup(e) {
     e.preventDefault();
 
-    const existingUser = users.find(
-      user => user.email.toLowerCase() === form.email.trim().toLowerCase()
-    );
-
-    if (existingUser) {
-      setMessage('Email already registered. Please login.');
+    if (!form.name || !form.email || !form.password) {
+      setMessage("Please fill in all fields.");
       return;
     }
 
-    const newUser = {
-      name: form.name.trim(),
-      email: form.email.trim(),
-      password: form.password
-    };
+    const existingUser = users.find(
+      (user) => user.email === form.email
+    );
 
-    const updatedUsers = [...users, newUser];
+    if (existingUser) {
+      setMessage("An account with this email already exists.");
+      return;
+    }
 
-    localStorage.setItem('auctionUsers', JSON.stringify(updatedUsers));
+    const updatedUsers = [...users, form];
+
     setUsers(updatedUsers);
+    localStorage.setItem(
+      "auctionUsers",
+      JSON.stringify(updatedUsers)
+    );
 
-    setForm({
-      name: '',
-      email: '',
-      password: ''
-    });
-
-    setMessage('Registration successful! Please login.');
-    setPage('login');
+    setMessage("Account created successfully! Please log in.");
+    setForm({ name: "", email: "", password: "" });
+    setPage("login");
   }
 
-  // USER LOGIN
   function handleLogin(e) {
     e.preventDefault();
 
     const foundUser = users.find(
-      user =>
-        user.email.toLowerCase() === form.email.trim().toLowerCase() &&
+      (user) =>
+        user.email === form.email &&
         user.password === form.password
     );
 
-    if (foundUser) {
-      localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('loggedInUser', foundUser.name);
+    if (!foundUser) {
+      setMessage("Invalid email or password.");
+      return;
+    }
 
-      setForm({
-        name: '',
-        email: '',
-        password: ''
-      });
+    localStorage.setItem("isLoggedIn", "true");
+    localStorage.setItem("loggedInUser", foundUser.name);
 
-      setMessage('');
-      setPage('dashboard');
+    setLoggedInUser(foundUser.name);
+    setMessage("");
+    setForm({ name: "", email: "", password: "" });
+    setPage("dashboard");
+  }
+
+  function handleAdminLogin(e) {
+    e.preventDefault();
+
+    if (
+      adminEmail === "jahnavisudhakanneganti@gmail.com" &&
+      adminPassword === "12345"
+    ) {
+      localStorage.setItem("isAdminLoggedIn", "true");
+      setMessage("");
+      setPage("adminDashboard");
     } else {
-      setMessage('Invalid email or password. Please sign up first.');
+      setMessage("Invalid admin credentials.");
     }
   }
-// ADMIN LOGIN
-function handleAdminLogin(e) {
-  e.preventDefault();
 
-  if (
-    adminEmail === 'jahnavisudhakanneganti@gmail.com' &&
-    adminPassword === '12345'
-  ) {
-    localStorage.setItem('isAdminLoggedIn', 'true');
-    setAdminEmail('');
-    setAdminPassword('');
-    setMessage('');
-    setPage('adminDashboard');
-  } else {
-    setMessage('Invalid admin email or password.');
+  function handleAddProduct(e) {
+    e.preventDefault();
+
+    if (
+      !newProductName.trim() ||
+      !newProductPrice ||
+      !newSellerName.trim() ||
+      !newProductDescription.trim() ||
+      !newProductImage.trim() ||
+      !newProductProof.trim()
+    ) {
+      setMessage("Please fill in all product details and proof link.");
+      return;
+    }
+
+    if (
+      !newProductImage.startsWith("http://") &&
+      !newProductImage.startsWith("https://")
+    ) {
+      setMessage("Enter a valid product image URL.");
+      return;
+    }
+
+    if (
+      !newProductProof.startsWith("http://") &&
+      !newProductProof.startsWith("https://")
+    ) {
+      setMessage("Enter a valid proof document URL.");
+      return;
+    }
+
+    if (Number(newProductPrice) <= 0) {
+      setMessage("Enter a valid product price.");
+      return;
+    }
+
+    const newProduct = {
+      id: Date.now(),
+      name: newProductName.trim(),
+      price: Number(newProductPrice),
+      seller: newSellerName.trim(),
+      description: newProductDescription.trim(),
+      condition: newProductCondition,
+      image: newProductImage.trim(),
+      proofUrl: newProductProof.trim(),
+      category: "General",
+      verificationStatus: "pending",
+    };
+
+    saveProducts([...products, newProduct]);
+
+    saveNotifications([
+      ...notifications,
+      {
+        id: Date.now(),
+        text: `${newProduct.name} has been submitted for admin verification.`,
+      },
+    ]);
+
+    setNewProductName("");
+    setNewProductPrice("");
+    setNewSellerName("");
+    setNewProductDescription("");
+    setNewProductCondition("New");
+    setNewProductImage("");
+    setNewProductProof("");
+
+    setMessage("Product submitted. It is waiting for admin verification.");
   }
-}
-// ADD PRODUCT
-function handleAddProduct(e) {
-  e.preventDefault();
 
-  if (!newProductName.trim() || Number(newProductPrice) <= 0) {
-    setMessage('Please enter a valid product name and price.');
-    return;
+  function handleDeleteProduct(productId) {
+    const updatedProducts = products.filter(
+      (product) => product.id !== productId
+    );
+
+    saveProducts(updatedProducts);
+    setMessage("Product deleted successfully.");
   }
 
-  const newProduct = {
-    id: Date.now(),
-    name: newProductName.trim(),
-    price: Number(newProductPrice),
-   image: newProductName.toLowerCase().includes('bluetooth')
-  ? 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=600'
-  : 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=600',
-    category: 'General'
-  };
+  function handleVerifyProduct(productId, status) {
+    const updatedProducts = products.map((product) =>
+      product.id === productId
+        ? { ...product, verificationStatus: status }
+        : product
+    );
 
-  const updatedProducts = [...products, newProduct];
+    saveProducts(updatedProducts);
 
-  localStorage.setItem('auctionProducts', JSON.stringify(updatedProducts));
-  setProducts(updatedProducts);
-const updatedNotifications = [
-  ...notifications,
-  {
-    id: Date.now(),
-    text: `${newProduct.name} has been added to the auctions.`
+    const product = products.find((item) => item.id === productId);
+
+    if (product) {
+      saveNotifications([
+        ...notifications,
+        {
+          id: Date.now(),
+          text: `${product.name} was ${status} by the admin.`,
+        },
+      ]);
+    }
+
+    setMessage(
+      status === "approved"
+        ? "Product approved. It is now visible to customers."
+        : "Product rejected. It will not be shown to customers."
+    );
   }
-];
 
-localStorage.setItem(
-  'auctionNotifications',
-  JSON.stringify(updatedNotifications)
-);
+  function handleReportProduct(e) {
+    e.preventDefault();
 
-setNotifications(updatedNotifications);
-  setNewProductName('');
-  setNewProductPrice('');
-  setMessage('Product added successfully!');
-}
-// DELETE PRODUCT
-function handleDeleteProduct(productId) {
-  const updatedProducts = products.filter(
-    product => product.id !== productId
-  );
+    if (!reportProduct || !reportReason || !reportDetails.trim()) {
+      setMessage("Please select a reason and enter the complaint details.");
+      return;
+    }
 
-  localStorage.setItem('auctionProducts', JSON.stringify(updatedProducts));
-  setProducts(updatedProducts);
-  const deletedProduct = products.find(
-  product => product.id === productId
-);
+    const alreadyReported = reports.some(
+      (report) =>
+        report.productId === reportProduct.id &&
+        report.reportedBy === loggedInUser &&
+        report.status === "Pending Review"
+    );
 
-const updatedNotifications = [
-  ...notifications,
-  {
-    id: Date.now(),
-    text: `${deletedProduct.name} has been removed from the auctions.`
+    if (alreadyReported) {
+      setMessage("You already have a pending report for this product.");
+      setReportProduct(null);
+      return;
+    }
+
+    const newReport = {
+      id: Date.now(),
+      productId: reportProduct.id,
+      productName: reportProduct.name,
+      reportedBy: loggedInUser,
+      reason: reportReason,
+      details: reportDetails.trim(),
+      date: new Date().toLocaleString(),
+      status: "Pending Review",
+    };
+
+    saveReports([...reports, newReport]);
+
+    setReportProduct(null);
+    setReportReason("");
+    setReportDetails("");
+    setMessage("Your complaint has been submitted to the admin.");
   }
-];
 
-localStorage.setItem(
-  'auctionNotifications',
-  JSON.stringify(updatedNotifications)
-);
+  function handleResolveReport(reportId) {
+    const updatedReports = reports.map((report) =>
+      report.id === reportId
+        ? { ...report, status: "Reviewed" }
+        : report
+    );
 
-setNotifications(updatedNotifications);
-  setMessage('Product deleted successfully!');
-}
-  // PLACE BID
+    saveReports(updatedReports);
+    setMessage("Report marked as reviewed.");
+  }
+
   function handleBid(e) {
     e.preventDefault();
 
-    const amount = Number(bidAmount);
+    if (!selectedProduct) return;
+
+    const currentProduct = products.find(
+      (product) => product.id === selectedProduct.id
+    );
 
     if (
-      !selectedProduct ||
-      !Number.isFinite(amount) ||
-      amount <= selectedProduct.price
+      !currentProduct ||
+      currentProduct.verificationStatus !== "approved"
     ) {
-      setMessage('Your bid must be higher than the current bid.');
+      setMessage("This product is not available for bidding.");
+      setSelectedProduct(null);
+      return;
+    }
+
+    const amount = Number(bidAmount);
+
+    if (!amount || amount <= currentProduct.price) {
+      setMessage("Your bid must be higher than the current price.");
       return;
     }
 
     const newBid = {
       id: Date.now(),
-      productId: selectedProduct.id,
-      productName: selectedProduct.name,
-      amount: amount,
-      user: loggedInUser,
-      date: new Date().toLocaleString()
+      productId: currentProduct.id,
+      productName: currentProduct.name,
+      bidder: loggedInUser,
+      amount,
+      date: new Date().toLocaleString(),
     };
 
-    const updatedBids = [...bids, newBid];
+    saveBids([...bids, newBid]);
 
-    const updatedProducts = products.map(product =>
-      product.id === selectedProduct.id
+    const updatedProducts = products.map((product) =>
+      product.id === currentProduct.id
         ? { ...product, price: amount }
         : product
     );
 
-    localStorage.setItem('auctionBids', JSON.stringify(updatedBids));
-    localStorage.setItem('auctionProducts', JSON.stringify(updatedProducts));
+    saveProducts(updatedProducts);
 
-    setBids(updatedBids);
-    setProducts(updatedProducts);
+    saveNotifications([
+      ...notifications,
+      {
+        id: Date.now(),
+        text: `Your bid of ₹${amount.toLocaleString("en-IN")} was placed on ${currentProduct.name}.`,
+      },
+    ]);
 
     setSelectedProduct(null);
-    setBidAmount('');
-    setMessage('Your bid has been placed successfully!');
+    setBidAmount("");
+    setMessage("Your bid has been placed successfully!");
   }
 
-  // LOGOUT
   function logout() {
-    localStorage.removeItem('isLoggedIn');
-    localStorage.removeItem('loggedInUser');
+    localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("loggedInUser");
+    localStorage.removeItem("isAdminLoggedIn");
 
-    setSelectedProduct(null);
-    setPage('home');
-    setMessage('You have logged out.');
+    setLoggedInUser("");
+    setMessage("");
+    setPage("home");
   }
 
-  const myBids = bids.filter(
-    bid => bid.user === loggedInUser
-  );
+  function openBidForm(product) {
+    setSelectedProduct(product);
+    setBidAmount("");
+    setMessage("");
+  }
+
+  function openReportForm(product) {
+    setReportProduct(product);
+    setReportReason("");
+    setReportDetails("");
+    setMessage("");
+  }
 
   return (
     <div className="app">
-
-      {/* NAVIGATION */}
-
       <nav className="navbar">
-        <h2 className="logo">
-          Auction<span>Hub</span>
+        <h2 className="logo" onClick={() => setPage("home")}>
+          AuctionHub
         </h2>
 
         <div className="nav-links">
-          <button onClick={() => openPage('home')}>
-            Home
-          </button>
+          <button onClick={() => setPage("home")}>Home</button>
 
-          {localStorage.getItem('isLoggedIn') === 'true' ? (
+          {loggedInUser ? (
             <>
-              <button onClick={() => openPage('dashboard')}>
+              <button onClick={() => setPage("dashboard")}>
                 Dashboard
               </button>
-
-              <button onClick={() => openPage('mybids')}>
+              <button onClick={() => setPage("mybids")}>
                 My Bids
               </button>
-
-              <button onClick={logout}>
-                Logout
-              </button>
+              <button onClick={logout}>Logout</button>
             </>
           ) : (
             <>
-              <button onClick={() => openPage('login')}>
-  Login
-</button>
-
-<button onClick={() => openPage('signup')}>
-  Sign Up
-</button>
-
-<button onClick={() => openPage('admin')}>
-  Admin
-</button>
+              <button onClick={() => setPage("login")}>Login</button>
+              <button onClick={() => setPage("signup")}>Sign Up</button>
             </>
           )}
+
+          <button onClick={() => setPage("admin")}>Admin</button>
         </div>
       </nav>
 
-      {/* HOME PAGE */}
+      {message && (
+        <div className="message">
+          {message}
+          <button onClick={() => setMessage("")}>×</button>
+        </div>
+      )}
 
-      {page === 'home' && (
+      {page === "home" && (
         <>
           <section className="hero">
             <div className="hero-content">
-              <p className="tagline">WELCOME TO AUCTIONHUB</p>
-
-              <h1>
-                Bid Smart.<br />
-                <span>Win Big.</span>
-              </h1>
-
+              <span className="tagline">WELCOME TO AUCTIONHUB</span>
+              <h1>Bid Smart. Win Big.</h1>
               <p>
-                Discover amazing products, place your bids
-                and enjoy the excitement of online auctions.
+                Discover products, place your bids, and enjoy a simple
+                online auction experience.
               </p>
-
               <button
-                className="explore-btn"
-                onClick={() => openPage('login')}
+                className="primary-btn"
+                onClick={() =>
+                  loggedInUser
+                    ? setPage("dashboard")
+                    : setPage("signup")
+                }
               >
                 Explore Auctions
               </button>
             </div>
 
             <div className="hero-image">
-              <div className="auction-card">
-                <div className="auction-icon">🏆</div>
-                <h2>Find Your Next Treasure</h2>
-                <p>Every bid brings a new opportunity.</p>
-              </div>
+              <img
+                src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=900"
+                alt="Online shopping"
+              />
             </div>
           </section>
 
@@ -374,69 +538,71 @@ setNotifications(updatedNotifications);
 
             <div className="feature-cards">
               <div className="feature-card">
-                <div>🛍️</div>
-                <h3>Explore Products</h3>
-                <p>Discover exciting products available for auction.</p>
+                <h3>Admin-Reviewed Listings</h3>
+                <p>
+                  Products are reviewed by the admin before appearing
+                  in the buyer dashboard.
+                </p>
               </div>
 
               <div className="feature-card">
-                <div>🔨</div>
-                <h3>Place Your Bids</h3>
-                <p>Participate in auctions and make your best bid.</p>
+                <h3>Easy Bidding</h3>
+                <p>
+                  Browse available products and place bids easily.
+                </p>
               </div>
 
               <div className="feature-card">
-                <div>🔒</div>
-                <h3>Easy Access</h3>
-                <p>Register and login to access your account.</p>
+                <h3>Buyer Complaints</h3>
+                <p>
+                  Customers can report suspicious listings or product
+                  issues for admin review.
+                </p>
               </div>
             </div>
           </section>
         </>
       )}
 
-      {/* SIGNUP PAGE */}
-
-      {page === 'signup' && (
+      {page === "signup" && (
         <section className="auth-section">
           <form className="auth-card" onSubmit={handleSignup}>
             <h2>Create Account</h2>
-            <p>Join AuctionHub today</p>
+            <p>Join AuctionHub today.</p>
 
             <input
-              name="name"
               type="text"
               placeholder="Full Name"
               value={form.name}
-              onChange={handleChange}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
               required
             />
 
             <input
-              name="email"
               type="email"
               placeholder="Email Address"
               value={form.email}
-              onChange={handleChange}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
               required
             />
 
             <input
-              name="password"
               type="password"
               placeholder="Password"
               value={form.password}
-              onChange={handleChange}
+              onChange={(e) =>
+                setForm({ ...form, password: e.target.value })
+              }
               required
             />
 
-            <button className="register-btn" type="submit">
+            <button className="primary-btn" type="submit">
               Sign Up
             </button>
 
             <p>
-              Already registered?{' '}
-              <span onClick={() => openPage('login')}>
+              Already registered?{" "}
+              <span className="text-link" onClick={() => setPage("login")}>
                 Login
               </span>
             </p>
@@ -444,317 +610,552 @@ setNotifications(updatedNotifications);
         </section>
       )}
 
-      {/* LOGIN PAGE */}
-
-      {page === 'login' && (
+      {page === "login" && (
         <section className="auth-section">
           <form className="auth-card" onSubmit={handleLogin}>
-            <h2>Welcome Back</h2>
-            <p>Login to your AuctionHub account</p>
+            <h2>User Login</h2>
+            <p>Login to start bidding.</p>
 
             <input
-              name="email"
               type="email"
               placeholder="Email Address"
               value={form.email}
-              onChange={handleChange}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
               required
             />
 
             <input
-              name="password"
               type="password"
               placeholder="Password"
               value={form.password}
-              onChange={handleChange}
+              onChange={(e) =>
+                setForm({ ...form, password: e.target.value })
+              }
               required
             />
 
-            <button className="register-btn" type="submit">
+            <button className="primary-btn" type="submit">
               Login
             </button>
 
             <p>
-              New user?{' '}
-              <span onClick={() => openPage('signup')}>
+              New user?{" "}
+              <span className="text-link" onClick={() => setPage("signup")}>
                 Create Account
               </span>
             </p>
           </form>
         </section>
       )}
-{/* ADMIN LOGIN */}
 
-{page === 'admin' && (
-  <section className="auth-section">
-    <form className="auth-card" onSubmit={handleAdminLogin}>
-      <h2>Admin Login</h2>
-      <p>Access the administration panel</p>
+      {page === "admin" && (
+        <section className="auth-section">
+          <form className="auth-card" onSubmit={handleAdminLogin}>
+            <h2>Admin Login</h2>
+            <p>Login to manage AuctionHub.</p>
 
-      <input
-        type="email"
-        placeholder="Admin Email"
-        value={adminEmail}
-        onChange={e => setAdminEmail(e.target.value)}
-        required
-      />
+            <input
+              type="email"
+              placeholder="Admin Email"
+              value={adminEmail}
+              onChange={(e) => setAdminEmail(e.target.value)}
+              required
+            />
 
-      <input
-        type="password"
-        placeholder="Admin Password"
-        value={adminPassword}
-        onChange={e => setAdminPassword(e.target.value)}
-        required
-      />
+            <input
+              type="password"
+              placeholder="Admin Password"
+              value={adminPassword}
+              onChange={(e) => setAdminPassword(e.target.value)}
+              required
+            />
 
-      <button className="register-btn" type="submit">
-        Admin Login
-      </button>
-    </form>
-  </section>
-)}
-{/* ADMIN DASHBOARD */}
-{page === 'adminDashboard' && (
-  <section className="user-dashboard">
-    <div className="dashboard-header">
-      <div>
-        <h1>Admin Dashboard</h1>
-        <p>Welcome, Administrator!</p>
-      </div>
-<div className="bid-section">
-  <h2>Manage Products</h2>
-
-  {products.map(product => (
-    <div key={product.id} className="bid-history">
-      <span>{product.name} - ₹{product.price}</span>
-
-      <button
-        className="register-btn"
-        onClick={() => handleDeleteProduct(product.id)}
-      >
-        Delete
-      </button>
-    </div>
-  ))}
-</div>
-      <button
-        className="register-btn"
-        onClick={() => {
-          localStorage.removeItem('isAdminLoggedIn');
-          setPage('home');
-        }}
-      >
-        Admin Logout
-      </button>
-    </div>
-<div className="bid-section">
-  <h2>Add New Product</h2>
-
-  <form onSubmit={handleAddProduct}>
-    <input
-      type="text"
-      placeholder="Product Name"
-      value={newProductName}
-      onChange={e => setNewProductName(e.target.value)}
-      required
-    />
-
-    <input
-      type="number"
-      placeholder="Starting Price"
-      min="1"
-      value={newProductPrice}
-      onChange={e => setNewProductPrice(e.target.value)}
-      required
-    />
-
-    <button className="register-btn" type="submit">
-      Add Product
-    </button>
-  </form>
-</div>
-    <div className="dashboard-stats">
-      <div className="stat-card">
-        <h3>Total Users</h3>
-        <h2>{users.length}</h2>
-      </div>
-
-      <div className="stat-card">
-        <h3>Total Products</h3>
-        <h2>{products.length}</h2>
-      </div>
-
-      <div className="stat-card">
-        <h3>Total Bids</h3>
-        <h2>{bids.length}</h2>
-      </div>
-    </div>
-        <div className="bid-section">
-      <h2>Registered Users</h2>
-
-      {users.length === 0 ? (
-        <p>No users registered yet.</p>
-      ) : (
-        users.map((user, index) => (
-          <div className="bid-history" key={user.email || index}>
-            <span>{user.name} - {user.email}</span>
-          </div>
-        ))
+            <button className="primary-btn" type="submit">
+              Admin Login
+            </button>
+          </form>
+        </section>
       )}
-    </div>
-  </section>
-)}
-      {/* USER DASHBOARD */}
 
-      {page === 'dashboard' && (
-        <section className="user-dashboard">
-
+      {page === "adminDashboard" && (
+        <section className="dashboard">
           <div className="dashboard-header">
             <div>
-              <p className="tagline">USER PANEL</p>
-             <h1>Welcome back, {loggedInUser}!</h1>
-             <div className="bid-section">
-  <h2>Notifications</h2>
-
-  {notifications.length === 0 ? (
-    <p>No new notifications.</p>
-  ) : (
-    notifications.slice().reverse().map(notification => (
-      <div className="bid-history" key={notification.id}>
-        <span>{notification.text}</span>
-      </div>
-    ))
-  )}
-</div>
-              <p>Explore products and participate in auctions.</p>
+              <span className="tagline">ADMIN PANEL</span>
+              <h1>Admin Dashboard</h1>
+              <p>Review products, manage users and handle complaints.</p>
             </div>
 
-            <button className="register-btn" onClick={logout}>
+            <button className="logout-btn" onClick={logout}>
               Logout
             </button>
           </div>
 
           <div className="dashboard-stats">
             <div className="stat-card">
-              <div className="stat-icon">🔨</div>
+              <span className="stat-icon">👥</span>
+              <h3>{users.length}</h3>
+              <p>Registered Users</p>
+            </div>
+
+            <div className="stat-card">
+              <span className="stat-icon">📦</span>
               <h3>{products.length}</h3>
+              <p>Total Products</p>
+            </div>
+
+            <div className="stat-card">
+              <span className="stat-icon">🔨</span>
+              <h3>{bids.length}</h3>
+              <p>Total Bids</p>
+            </div>
+
+            <div className="stat-card">
+              <span className="stat-icon">🚩</span>
+              <h3>{reports.filter((r) => r.status === "Pending Review").length}</h3>
+              <p>Pending Reports</p>
+            </div>
+          </div>
+
+          <div className="admin-section">
+            <h2>Submit New Product for Verification</h2>
+
+            <form className="add-product-form" onSubmit={handleAddProduct}>
+              <input
+                type="text"
+                placeholder="Product Name"
+                value={newProductName}
+                onChange={(e) => setNewProductName(e.target.value)}
+                required
+              />
+
+              <input
+                type="number"
+                placeholder="Starting Price (₹)"
+                value={newProductPrice}
+                onChange={(e) => setNewProductPrice(e.target.value)}
+                min="1"
+                required
+              />
+
+              <input
+                type="text"
+                placeholder="Seller Name"
+                value={newSellerName}
+                onChange={(e) => setNewSellerName(e.target.value)}
+                required
+              />
+
+              <select
+                value={newProductCondition}
+                onChange={(e) => setNewProductCondition(e.target.value)}
+              >
+                <option value="New">New</option>
+                <option value="Used">Used</option>
+                <option value="Refurbished">Refurbished</option>
+              </select>
+
+              <textarea
+                placeholder="Product description and specifications"
+                value={newProductDescription}
+                onChange={(e) => setNewProductDescription(e.target.value)}
+                required
+              />
+
+              <input
+                type="url"
+                placeholder="Product Image URL"
+                value={newProductImage}
+                onChange={(e) => setNewProductImage(e.target.value)}
+                required
+              />
+
+              <input
+                type="url"
+                placeholder="Purchase Bill / Ownership Proof URL"
+                value={newProductProof}
+                onChange={(e) => setNewProductProof(e.target.value)}
+                required
+              />
+
+              <button className="primary-btn" type="submit">
+                Submit for Verification
+              </button>
+            </form>
+
+            <p className="small-note">
+              New products remain hidden from customers until the admin
+              reviews the details and proof and approves the listing.
+              Use a shareable link for the demo proof document.
+            </p>
+          </div>
+
+          <div className="admin-section">
+            <h2>Review and Manage Products</h2>
+
+            {products.length === 0 ? (
+              <p>No products available.</p>
+            ) : (
+              <div className="admin-product-list">
+                {products.map((product) => (
+                  <div className="admin-product" key={product.id}>
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      className="admin-product-image"
+                    />
+
+                    <div className="admin-product-details">
+                      <h3>{product.name}</h3>
+                      <p>Seller: {product.seller}</p>
+                      <p>Condition: {product.condition}</p>
+                      <p>
+                        Price: ₹
+                        {Number(product.price).toLocaleString("en-IN")}
+                      </p>
+                      <p>Description: {product.description}</p>
+
+                      {product.proofUrl ? (
+                        <p>
+                          <a
+                            href={product.proofUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            View Purchase / Ownership Proof
+                          </a>
+                        </p>
+                      ) : (
+                        <p className="small-note">
+                          No proof link submitted.
+                        </p>
+                      )}
+
+                      <span
+                        className={`status ${product.verificationStatus}`}
+                      >
+                        {product.verificationStatus}
+                      </span>
+                    </div>
+
+                    <div className="admin-actions">
+                      {product.verificationStatus !== "approved" && (
+                        <button
+                          className="approve-btn"
+                          onClick={() =>
+                            handleVerifyProduct(product.id, "approved")
+                          }
+                        >
+                          Approve
+                        </button>
+                      )}
+
+                      {product.verificationStatus !== "rejected" && (
+                        <button
+                          className="reject-btn"
+                          onClick={() =>
+                            handleVerifyProduct(product.id, "rejected")
+                          }
+                        >
+                          Reject
+                        </button>
+                      )}
+
+                      <button
+                        className="delete-btn"
+                        onClick={() => handleDeleteProduct(product.id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="admin-section">
+            <h2>Customer Complaints</h2>
+
+            {reports.length === 0 ? (
+              <p>No customer complaints submitted yet.</p>
+            ) : (
+              <div className="report-list">
+                {reports.map((report) => (
+                  <div className="report-card" key={report.id}>
+                    <h3>{report.productName}</h3>
+                    <p>Reported by: {report.reportedBy}</p>
+                    <p>Reason: {report.reason}</p>
+                    <p>Details: {report.details}</p>
+                    <p>Date: {report.date}</p>
+
+                    <span
+                      className={`status ${
+                        report.status === "Reviewed" ? "approved" : "pending"
+                      }`}
+                    >
+                      {report.status}
+                    </span>
+
+                    {report.status === "Pending Review" && (
+                      <button
+                        className="approve-btn"
+                        onClick={() => handleResolveReport(report.id)}
+                      >
+                        Mark as Reviewed
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="admin-section">
+            <h2>Registered Users</h2>
+
+            {users.length === 0 ? (
+              <p>No registered users yet.</p>
+            ) : (
+              <div className="table-wrapper">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Email</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {users.map((user, index) => (
+                      <tr key={index}>
+                        <td>{user.name}</td>
+                        <td>{user.email}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {page === "dashboard" && (
+        <section className="dashboard">
+          <div className="dashboard-header">
+            <div>
+              <span className="tagline">USER DASHBOARD</span>
+              <h1>Welcome, {loggedInUser}!</h1>
+              <p>Explore admin-approved products and place your bids.</p>
+            </div>
+
+            <button className="logout-btn" onClick={logout}>
+              Logout
+            </button>
+          </div>
+
+          <div className="dashboard-stats">
+            <div className="stat-card">
+              <span className="stat-icon">📦</span>
+              <h3>{approvedProducts.length}</h3>
               <p>Available Products</p>
             </div>
 
             <div className="stat-card">
-              <div className="stat-icon">💰</div>
-              <h3>{myBids.length}</h3>
+              <span className="stat-icon">🔨</span>
+              <h3>{userBids.length}</h3>
               <p>My Bids</p>
             </div>
-
-            <div className="stat-card">
-              <div className="stat-icon">⭐</div>
-              <h3>{products.length}</h3>
-              <p>Featured Auctions</p>
-            </div>
           </div>
+
+          {notifications.length > 0 && (
+            <div className="notification-section">
+              <h2>Notifications</h2>
+              {notifications.slice(-3).reverse().map((notification) => (
+                <p className="notification" key={notification.id}>
+                  {notification.text}
+                </p>
+              ))}
+            </div>
+          )}
 
           <div className="auction-heading">
-            <h2>Featured Auctions</h2>
-            <p>Discover products available for bidding.</p>
+            <h2>Available Auctions</h2>
+            <p>Only products approved by the admin are displayed here.</p>
           </div>
 
-          <div className="product-grid">
-            {products.map(product => (
-              <div className="product-card" key={product.id}>
-                <img src={product.image} alt={product.name} />
+          {approvedProducts.length === 0 ? (
+            <p className="empty-message">
+              No admin-verified products are available yet. Please check
+              again later.
+            </p>
+          ) : (
+            <div className="product-grid">
+              {approvedProducts.map((product) => (
+                <div className="product-card" key={product.id}>
+                  <img src={product.image} alt={product.name} />
 
-                <div className="product-info">
-                  <span className="product-category">
-                    {product.category}
-                  </span>
+                  <div className="product-info">
+                    <span className="product-category">
+                      {product.category}
+                    </span>
 
-                  <h3>{product.name}</h3>
-                  <p>Current Bid</p>
+                    <h3>{product.name}</h3>
 
-                  <h2>
-                    ₹{product.price.toLocaleString('en-IN')}
-                  </h2>
+                    <p className="seller-name">
+                      Seller: {product.seller}
+                    </p>
 
-                  <button
-                    className="register-btn"
-                    onClick={() => {
-                      setSelectedProduct(product);
-                      setBidAmount('');
-                      setMessage('');
-                    }}
-                  >
-                    Place Bid
-                  </button>
+                    <p>Condition: {product.condition}</p>
+                    <p>{product.description}</p>
+
+                    <span className="verified-badge">
+                      ✓ Admin Verified
+                    </span>
+
+                   <p className="small-note">
+  Admin verified based on submitted product details and proof.
+  Buyers are advised to check product details before bidding.
+</p>
+
+                    <h3 className="product-price">
+                      ₹{Number(product.price).toLocaleString("en-IN")}
+                    </h3>
+
+                    <div className="bid-section">
+                      <button
+                        className="primary-btn"
+                        onClick={() => openBidForm(product)}
+                      >
+                        Place Bid
+                      </button>
+
+                      <button
+                        className="report-btn"
+                        onClick={() => openReportForm(product)}
+                      >
+                        Report an Issue
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-
-          {/* BID FORM */}
+              ))}
+            </div>
+          )}
 
           {selectedProduct && (
-            <div className="bid-section">
-              <h2>Place Your Bid</h2>
-              <h3>{selectedProduct.name}</h3>
+            <div className="modal-overlay">
+              <form className="bid-modal" onSubmit={handleBid}>
+                <button
+                  type="button"
+                  className="close-btn"
+                  onClick={() => setSelectedProduct(null)}
+                >
+                  ×
+                </button>
 
-              <p>
-                Current Bid: ₹
-                {selectedProduct.price.toLocaleString('en-IN')}
-              </p>
+                <h2>Place Your Bid</h2>
+                <h3>{selectedProduct.name}</h3>
 
-              <form onSubmit={handleBid}>
+                <p>
+                  Current Price: ₹
+                  {Number(selectedProduct.price).toLocaleString("en-IN")}
+                </p>
+
                 <input
                   type="number"
-                  min={selectedProduct.price + 1}
                   placeholder="Enter your bid amount"
                   value={bidAmount}
-                  onChange={e => setBidAmount(e.target.value)}
+                  onChange={(e) => setBidAmount(e.target.value)}
+                  min={selectedProduct.price + 1}
                   required
                 />
 
-                <button className="register-btn" type="submit">
+                <button className="primary-btn" type="submit">
                   Submit Bid
-                </button>
-
-                <button
-                  type="button"
-                  className="cancel-btn"
-                  onClick={() => setSelectedProduct(null)}
-                >
-                  Cancel
                 </button>
               </form>
             </div>
           )}
 
+          {reportProduct && (
+            <div className="modal-overlay">
+              <form className="bid-modal" onSubmit={handleReportProduct}>
+                <button
+                  type="button"
+                  className="close-btn"
+                  onClick={() => setReportProduct(null)}
+                >
+                  ×
+                </button>
+
+                <h2>Report a Product Issue</h2>
+                <p>Product: {reportProduct.name}</p>
+
+                <select
+                  value={reportReason}
+                  onChange={(e) => setReportReason(e.target.value)}
+                  required
+                >
+                  <option value="">Select complaint reason</option>
+                  <option value="Product is different from its description">
+                    Product is different from its description
+                  </option>
+                  <option value="Suspected counterfeit product">
+                    Suspected counterfeit product
+                  </option>
+                  <option value="Damaged product received">
+                    Damaged product received
+                  </option>
+                  <option value="Wrong product received">
+                    Wrong product received
+                  </option>
+                  <option value="Suspicious seller or listing">
+                    Suspicious seller or listing
+                  </option>
+                  <option value="Other issue">Other issue</option>
+                </select>
+
+                <textarea
+                  placeholder="Explain the issue..."
+                  value={reportDetails}
+                  onChange={(e) => setReportDetails(e.target.value)}
+                  required
+                />
+
+                <button className="primary-btn" type="submit">
+                  Submit Complaint
+                </button>
+              </form>
+            </div>
+          )}
         </section>
       )}
 
-      {/* MY BIDS PAGE */}
-
-      {page === 'mybids' && (
-        <section className="user-dashboard">
-
+      {page === "mybids" && (
+        <section className="dashboard">
           <div className="dashboard-header">
             <div>
-              <p className="tagline">USER PANEL</p>
+              <span className="tagline">BIDDING HISTORY</span>
               <h1>My Bids</h1>
-              <p>View your bidding activity and history.</p>
+              <p>View the bids you have placed.</p>
             </div>
 
             <button
-              className="register-btn"
-              onClick={() => openPage('dashboard')}
+              className="primary-btn"
+              onClick={() => setPage("dashboard")}
             >
-              Browse Auctions
+              Back to Auctions
             </button>
           </div>
 
-          <div className="bid-history">
-            {myBids.length === 0 ? (
-              <p>You have not placed any bids yet.</p>
-            ) : (
+          {userBids.length === 0 ? (
+            <p className="empty-message">
+              You have not placed any bids yet.
+            </p>
+          ) : (
+            <div className="table-wrapper">
               <table>
                 <thead>
                   <tr>
@@ -765,37 +1166,27 @@ setNotifications(updatedNotifications);
                 </thead>
 
                 <tbody>
-                  {myBids.map(bid => (
+                  {userBids.map((bid) => (
                     <tr key={bid.id}>
                       <td>{bid.productName}</td>
                       <td>
-                        ₹{bid.amount.toLocaleString('en-IN')}
+                        ₹{Number(bid.amount).toLocaleString("en-IN")}
                       </td>
                       <td>{bid.date}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            )}
-          </div>
-
+            </div>
+          )}
         </section>
       )}
 
-      {/* MESSAGE */}
-
-      {message && (
-        <p className="message">
-          {message}
-        </p>
-      )}
-
-      {/* FOOTER */}
-
-      <footer>
-        <p>© 2026 AuctionHub | Online Auction System</p>
+      <footer className="footer">
+        <h2>AuctionHub</h2>
+        <p>Online Auction System - College Project</p>
+        <p>© 2026 AuctionHub. All rights reserved.</p>
       </footer>
-
     </div>
   );
 }
